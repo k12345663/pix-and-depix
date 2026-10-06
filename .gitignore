@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+webapp/uploads/*
+!webapp/uploads/.gitkeep
+webapp/processed/*
+!webapp/processed/.gitkeep
