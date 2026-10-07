@@ -3,7 +3,7 @@ import sys
 import json
 import numpy as np
 from PIL import Image
-from de import to_gray, estimate_grid, flat_tile_ratio, DEFAULT_THR
+from depixelate import to_gray, estimate_grid, flat_tile_ratio, DEFAULT_THR
 
 def is_pixelated(image_path):
     try:
@@ -40,7 +40,7 @@ def is_pixelated(image_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python check_pixelated.py <image_path>")
+        print("Usage: python check_pixelation.py <image_path>")
         sys.exit(1)
         
     result = is_pixelated(sys.argv[1])

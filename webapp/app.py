@@ -71,7 +71,7 @@ def process_image():
         return jsonify({'error': f'Could not read image: {e}'}), 400
 
     # Copy scripts to job_dir so pure_pix works in isolation
-    for script in ['pure_pix.py', 'pixelate2.py', 'de.py', 'check_pixelated.py', 'layer7_verifier.py']:
+    for script in ['pure_pix.py', 'pixelate.py', 'depixelate.py', 'check_pixelation.py', 'layer7_verifier.py']:
         src_path = os.path.join(BASE_DIR, script)
         if os.path.exists(src_path):
             shutil.copy(src_path, job_dir)
@@ -85,20 +85,20 @@ def process_image():
             img.convert('RGB').save(os.path.join(job_dir, 'photo.jpg'), 'JPEG')
             subprocess.run([sys.executable, 'pure_pix.py'], cwd=job_dir, check=True)
             pixelated_file = 'pure_pix.jpg'
-            subprocess.run([sys.executable, 'de.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'depixelate.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
         elif script_type == 'pixelate2':
-            # pixelate2.py
-            subprocess.run([sys.executable, 'pixelate2.py', filename, '-p', preset], cwd=job_dir, check=True)
+            # pixelate.py
+            subprocess.run([sys.executable, 'pixelate.py', filename, '-p', preset], cwd=job_dir, check=True)
             stem, ext = os.path.splitext(filename)
             pixelated_file = f"{stem}_pixelated{ext}"
-            subprocess.run([sys.executable, 'de.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'depixelate.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
         elif script_type == 'de':
-            # run only de.py
-            subprocess.run([sys.executable, 'de.py', filename, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
+            # run only depixelate.py
+            subprocess.run([sys.executable, 'depixelate.py', filename, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
             pixelated_file = filename
         elif script_type == 'check_pixelated':
-            # run only check_pixelated.py
-            output = subprocess.run([sys.executable, 'check_pixelated.py', filename], cwd=job_dir, capture_output=True, text=True, check=True)
+            # run only check_pixelation.py
+            output = subprocess.run([sys.executable, 'check_pixelation.py', filename], cwd=job_dir, capture_output=True, text=True, check=True)
             with open(os.path.join(job_dir, 'report.json'), 'w') as f:
                 f.write(output.stdout)
             pixelated_file = filename
