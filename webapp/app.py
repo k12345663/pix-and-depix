@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 import subprocess
+import sys
 from flask import Flask, request, jsonify, render_template, send_file
 from werkzeug.utils import secure_filename
 
@@ -12,6 +13,15 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max upload
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+from werkzeug.exceptions import HTTPException
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return jsonify(error=e.description), e.code
+    # now you're handling non-HTTP exceptions only
+    return jsonify(error=str(e)), 500
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -51,22 +61,22 @@ def process_image():
             from PIL import Image
             img = Image.open(orig_path)
             img.convert('RGB').save(os.path.join(job_dir, 'photo.jpg'), 'JPEG')
-            subprocess.run(['python3', 'pure_pix.py'], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'pure_pix.py'], cwd=job_dir, check=True)
             pixelated_file = 'pure_pix.jpg'
-            subprocess.run(['python3', 'de.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'de.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
         elif script_type == 'pixelate2':
             # pixelate2.py
-            subprocess.run(['python3', 'pixelate2.py', filename, '-p', preset], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'pixelate2.py', filename, '-p', preset], cwd=job_dir, check=True)
             stem, ext = os.path.splitext(filename)
             pixelated_file = f"{stem}_pixelated{ext}"
-            subprocess.run(['python3', 'de.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'de.py', pixelated_file, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
         elif script_type == 'de':
             # run only de.py
-            subprocess.run(['python3', 'de.py', filename, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
+            subprocess.run([sys.executable, 'de.py', filename, '--restored-out', 'restored/', '--json', 'report.json'], cwd=job_dir, check=True)
             pixelated_file = filename
         elif script_type == 'check_pixelated':
             # run only check_pixelated.py
-            output = subprocess.run(['python3', 'check_pixelated.py', filename], cwd=job_dir, capture_output=True, text=True, check=True)
+            output = subprocess.run([sys.executable, 'check_pixelated.py', filename], cwd=job_dir, capture_output=True, text=True, check=True)
             with open(os.path.join(job_dir, 'report.json'), 'w') as f:
                 f.write(output.stdout)
             pixelated_file = filename
