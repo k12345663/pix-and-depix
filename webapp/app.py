@@ -1,4 +1,7 @@
 import os
+# Keep numpy/scipy single-threaded to save memory on small instances
+for _v in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS'):
+    os.environ.setdefault(_v, '1')
 import shutil
 import uuid
 import subprocess
@@ -9,6 +12,8 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['PROCESSED_FOLDER'] = 'processed'
+# Longest side of uploaded images; big images exceed free-tier RAM
+MAX_SIDE = int(os.environ.get('MAX_IMAGE_SIDE', '1280'))
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max upload
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,6 +52,23 @@ def process_image():
     filename = secure_filename(file.filename)
     orig_path = os.path.join(job_dir, filename)
     file.save(orig_path)
+
+    # Downscale large uploads so processing fits in memory/time limits
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(orig_path) as im:
+            if max(im.size) > MAX_SIDE:
+                fmt = im.format
+                im = ImageOps.exif_transpose(im)
+                im.thumbnail((MAX_SIDE, MAX_SIDE), Image.LANCZOS)
+                if fmt == 'JPEG' and im.mode not in ('RGB', 'L'):
+                    im = im.convert('RGB')
+                if fmt == 'JPEG':
+                    im.save(orig_path, format=fmt, quality=95)
+                else:
+                    im.save(orig_path, format=fmt)
+    except Exception as e:
+        return jsonify({'error': f'Could not read image: {e}'}), 400
 
     # Copy scripts to job_dir so pure_pix works in isolation
     for script in ['pure_pix.py', 'pixelate2.py', 'de.py', 'check_pixelated.py', 'layer7_verifier.py']:
